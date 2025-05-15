@@ -1,4 +1,5 @@
-from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QLineEdit, QPushButton, QListWidget, QWidget, QTabWidget
+from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QLineEdit, QPushButton, QListWidget, QWidget, QTabWidget, QMessageBox
+from database_manager import DatabaseManager
 
 
 class MainWindow(QMainWindow):
@@ -6,6 +7,8 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Memora - The best memory application")
         self.setGeometry(100, 100, 800, 600)
+
+        self.db_manager = DatabaseManager()
 
         self.tab_widget = QTabWidget()
         self.setCentralWidget(self.tab_widget)
@@ -42,11 +45,34 @@ class MainWindow(QMainWindow):
         self.cards_tab.setLayout(layout)
         self.load_cards()
 
+
     def add_card(self):
-        pass
+        front = self.front_input.text().strip()
+        back = self.back_input.text().strip()
+
+        if not front or not back:
+            QMessageBox.warning(self, "Ошибка", "Оба поля должны быть заполнены.")
+            return
+
+        self.db_manager.add_card(front, back)
+        self.front_input.clear()
+        self.back_input.clear()
+        self.load_cards()
+
 
     def load_cards(self):
-        pass
+        self.cards_list.clear()
+        cards = self.db_manager.get_cards()
+        for card in cards:
+            self.cards_list.addItem(f"{card[0]}: {card[1]}")
+
 
     def delete_card(self):
-        pass
+        selected_item = self.cards_list.currentItem()
+        if not selected_item:
+            QMessageBox.warning(self, "Ошибка", "Выберите карточку для удаления.")
+            return
+
+        card_id = int(selected_item.text().split(":")[0])
+        self.db_manager.delete_card(card_id)
+        self.load_cards()
