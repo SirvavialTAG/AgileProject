@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QLineEdit, QPushButton, QListWidget, QWidget, QTabWidget, QMessageBox
+from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QLineEdit, QPushButton, QListWidget, QWidget, QTabWidget, QMessageBox, QLabel, QTextEdit
 from database_manager import DatabaseManager
 
 
@@ -17,8 +17,10 @@ class MainWindow(QMainWindow):
         self.repetition_tab = QWidget()
 
         self.tab_widget.addTab(self.cards_tab, "Карточки")
+        self.tab_widget.addTab(self.repetition_tab, "Повторение")
 
         self.setup_cards_tab()
+        self.setup_repetition_tab()
 
     def setup_cards_tab(self):
         layout = QVBoxLayout()
@@ -76,3 +78,45 @@ class MainWindow(QMainWindow):
         card_id = int(selected_item.text().split(":")[0])
         self.db_manager.delete_card(card_id)
         self.load_cards()
+
+    def setup_repetition_tab(self):
+        layout = QVBoxLayout()
+
+        self.ready_label = QLabel("Карточек для повторения: 0")
+        layout.addWidget(self.ready_label)
+
+        self.start_review_button = QPushButton("Начать повторение")
+        self.start_review_button.clicked.connect(self.start_review)
+        layout.addWidget(self.start_review_button)
+
+        self.review_front_label = QLabel()
+        layout.addWidget(self.review_front_label)
+
+        self.review_back_label = QTextEdit()
+        self.review_back_label.setReadOnly(True)
+        layout.addWidget(self.review_back_label)
+
+        self.show_answer_button = QPushButton("Показать ответ")
+        self.show_answer_button.clicked.connect(self.show_answer)
+        layout.addWidget(self.show_answer_button)
+
+        self.feedback_buttons = QWidget()
+        feedback_layout = QVBoxLayout()
+
+        self.again_button = QPushButton("Снова")
+        self.again_button.clicked.connect(lambda: self.give_feedback("again"))
+        feedback_layout.addWidget(self.again_button)
+
+        self.good_button = QPushButton("Хорошо")
+        self.good_button.clicked.connect(lambda: self.give_feedback("good"))
+        feedback_layout.addWidget(self.good_button)
+
+        self.easy_button = QPushButton("Легко")
+        self.easy_button.clicked.connect(lambda: self.give_feedback("easy"))
+        feedback_layout.addWidget(self.easy_button)
+
+        self.feedback_buttons.setLayout(feedback_layout)
+        layout.addWidget(self.feedback_buttons)
+
+        self.repetition_tab.setLayout(layout)
+        self.load_ready_cards()
