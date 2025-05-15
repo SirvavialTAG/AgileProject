@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QLineEdit, QPushButton, QListWidget, QWidget, QTabWidget, QMessageBox, QLabel, QTextEdit
 from database_manager import DatabaseManager
-
+from datetime import datetime, timedelta
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -120,3 +120,58 @@ class MainWindow(QMainWindow):
 
         self.repetition_tab.setLayout(layout)
         self.load_ready_cards()
+
+    def load_ready_cards(self):
+        today = datetime.now().date()
+        cards = self.db_manager.get_cards()
+        ready_count = sum(1 for card in cards if datetime.strptime(card[4], "%Y-%m-%d").date() <= today)
+        self.ready_label.setText(f"Карточек для повторения: {ready_count}")
+
+    def start_review(self):
+        self.current_review_cards = [
+            card for card in self.db_manager.get_cards()
+            if datetime.strptime(card[4], "%Y-%m-%d").date() <= datetime.now().date()
+        ]
+        if not self.current_review_cards:
+            QMessageBox.information(self, "Информация", "Нет карточек для повторения.")
+            return
+        self.current_card_index = 0
+        self.show_next_card()
+
+    def show_next_card(self):
+        if self.current_card_index < len(self.current_review_cards):
+            card = self.current_review_cards[self.current_card_index]
+            self.review_front_label.setText(card[1])
+            self.review_back_label.clear()
+        else:
+            QMessageBox.information(self, "Информация", "Повторение завершено.")
+            self.load_ready_cards()
+
+    def show_answer(self):
+        if self.current_card_index < len(self.current_review_cards):
+            card = self.current_review_cards[self.current_card_index]
+            self.review_back_label.setText(card[2])
+
+    def give_feedback(self, feedback):
+        if self.current_card_index < len(self.current_review_cards):
+            card = self.current_review_cards[self.current_card_index]
+            card_id = card[0]
+            last_interval = card[5]
+
+            if feedback == "again":
+                next_interval = 0
+                next_review_date = datetime.now().date()
+            elif feedback == "good":
+                next_interval = 1 if last_interval == 0 else int(last_interval * 1.5)
+                next_review_date = datetime.now().date() + timedelta(days=next_interval)
+            elif feedback == "easy":
+                next_interval = 4 if last_interval == 0 else int(last_interval * 2.5)
+                next_review_date = datetime.now().date() + timedelta(days=next_interval)
+
+            self.db_manager.update_card_review_date(card_id, next_review_date, next_interval)
+            self.current_card_index += 1
+            self.show_next_card()
+
+    def closeEvent(self, event):
+        self.db_manager.close()
+        event.accept()
