@@ -9,27 +9,51 @@ class DatabaseManager:
     def create_table(self):
         with self.connection:
             self.connection.execute('''
+                CREATE TABLE IF NOT EXISTS decks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE
+                )
+            ''')
+
+            self.connection.execute('''
                 CREATE TABLE IF NOT EXISTS cards (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     front TEXT NOT NULL,
                     back TEXT NOT NULL,
                     creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     next_review_date DATE NOT NULL,
-                    last_interval_days INTEGER DEFAULT 0
+                    last_interval_days INTEGER DEFAULT 0,
+                    deck_id INTEGER,
+                    FOREIGN KEY(deck_id) REFERENCES decks(id) ON DELETE CASCADE
                 )
             ''')
 
-    def add_card(self, front, back):
+    def add_deck(self,name):
+        with self.connection:
+            self.connection.execute("INSERT INTO decks (name) VALUES (?)", (name,))
+
+    def get_decks(self):
+        with self.connection:
+            return self.connection.execute("SELECT * FROM decks").fetchall()
+        
+    def delete_deck(self, deck_id):
+        with self.connection:
+            self.connection.execute("DELETE FROM decks WHERE id = ?", (deck_id,))
+
+    def add_card(self, front, back, deck_id=None):
         next_review_date = datetime.now().date()
         with self.connection:
-            self.connection.execute(
-                "INSERT INTO cards (front, back, next_review_date) VALUES (?, ?, ?)",
-                (front, back, next_review_date)
-            )
+            self.connection.execute("INSERT INTO cards (front, back, next_review_date, deck_id) VALUES (?, ?, ?, ?)",
+            (front, back, next_review_date, deck_id))
 
     def get_cards(self):
         with self.connection:
             return self.connection.execute("SELECT * FROM cards").fetchall()
+        
+    def get_cards_by_deck(self, deck_id):
+        with self.connection:
+            return self.connection.execute("SELECT * FROM cards WHERE deck_id = ?",
+            (deck_id,)).fetchall()
 
     def delete_card(self, card_id):
         with self.connection:
@@ -37,10 +61,13 @@ class DatabaseManager:
 
     def update_card_review_date(self, card_id, next_review_date, last_interval_days):
         with self.connection:
-            self.connection.execute(
-                "UPDATE cards SET next_review_date = ?, last_interval_days = ? WHERE id = ?",
-                (next_review_date, last_interval_days, card_id)
-            )
+            self.connection.execute("UPDATE cards SET next_review_date = ?, last_interval_days = ? WHERE id = ?",
+            (next_review_date, last_interval_days, card_id))
+
+    def update_card_fields(self, card_id, new_front, new_back):
+        with self.connection:
+            self.connection.execute("UPDATE cards SET front = ?, back = ? WHERE id = ?",
+            (new_front, new_back, card_id))
 
     def close(self):
         self.connection.close()
